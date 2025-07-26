@@ -1,5 +1,6 @@
 {
   "name": "recreahub",
+  "type": "module",
   "version": "1.0.0",
   "description": "Plataforma digital que conecta empresas que desechan materiales de alta calidad (madera, vidrio, tela, metal, acrílico) con artesanos, makers y carpinteros que los transforman en productos de valor. Promueve la economía circular, reduce costos de materia prima y otorga reputación ambiental a los donadores.",
   "main": "index.js",
