@@ -1,0 +1,96 @@
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Effect": "Allow",
+      "Action": [
+        "cloudformation:Describe*",
+        "cloudformation:List*",
+        "cloudformation:Get*",
+        "cloudformation:PreviewStackUpdate",
+        "cloudformation:CreateStack",
+        "cloudformation:UpdateStack"
+      ],
+      "Resource": "arn:aws:cloudformation:us-east-1:676373376027:stack/recreahub-*"
+    },
+    {
+      "Effect": "Allow",
+      "Action": ["cloudformation:ValidateTemplate"],
+      "Resource": "*"
+    },
+    {
+      "Effect": "Allow",
+      "Action": ["s3:*"],
+      "Resource": ["arn:aws:s3:::recreahub-*", "arn:aws:s3:::recreahub-*/"]
+    },
+    {
+      "Effect": "Allow",
+      "Action": ["s3:ListAllMyBuckets", "s3:CreateBucket"],
+      "Resource": "*"
+    },
+    {
+      "Effect": "Allow",
+      "Action": [
+        "apigateway:GET",
+        "apigateway:HEAD",
+        "apigateway:OPTIONS",
+        "apigateway:PATCH",
+        "apigateway:POST",
+        "apigateway:PUT",
+        "apigateway:DELETE"
+      ],
+      "Resource": [
+        "arn:aws:apigateway:*::/restapis",
+        "arn:aws:apigateway:*::/restapis/*"
+      ]
+    },
+    {
+      "Effect": "Allow",
+      "Action": ["logs:DescribeLogGroups"],
+      "Resource": "arn:aws:logs:us-east-1:676373376027:log-group::log-stream:*"
+    },
+    {
+      "Action": [
+        "logs:CreateLogGroup",
+        "logs:CreateLogStream",
+        "logs:DeleteLogGroup",
+        "logs:DeleteLogStream",
+        "logs:DescribeLogStreams",
+        "logs:FilterLogEvents"
+      ],
+      "Resource": "arn:aws:logs:us-east-1:676373376027:log-group:/aws/lambda/recreahub-*:log-stream:*",
+      "Effect": "Allow"
+    },
+    {
+      "Effect": "Allow",
+      "Action": [
+        "events:DescribeRule",
+        "events:PutRule",
+        "events:PutTargets",
+        "events:RemoveTargets",
+        "events:DeleteRule"
+      ],
+      "Resource": "arn:aws:events:us-east-1:676373376027:rule/recreahub-*"
+    },
+    {
+      "Effect": "Allow",
+      "Action": [
+        "lambda:GetFunction",
+        "lambda:CreateFunction",
+        "lambda:DeleteFunction",
+        "lambda:UpdateFunctionConfiguration",
+        "lambda:UpdateFunctionCode",
+        "lambda:ListVersionsByFunction",
+        "lambda:PublishVersion",
+        "lambda:CreateAlias",
+        "lambda:DeleteAlias",
+        "lambda:UpdateAlias",
+        "lambda:GetFunctionConfiguration",
+        "lambda:AddPermission",
+        "lambda:RemovePermission",
+        "lambda:InvokeFunction"
+      ],
+      "Resource": ["arn:aws:lambda:*:676373376027:function:recreahub-*"]
+    }
+  ]
+}

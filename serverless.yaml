@@ -1,38 +1,149 @@
-service: recreahub
+service: recreahub-v3
+frameworkVersion: '3'
 
 provider:
   name: aws
-  httpApi:
+  runtime: nodejs20.x   
+  region: us-east-1
+  stage: ${opt:stage, 'dev'}
+  cfnRole: arn:aws:iam::676373376027:role/cfnRole-role
+  iam:
+    role: arn:aws:iam::676373376027:role/recreahub-lambda-rol
+
+  httpApi:  
     cors: true
     authorizers:
       customAuthorizer:
         type: request
         functionName: authorizerFunc
-        payloadVersion: '2.0
+        payloadVersion: '2.0'
         enableSimpleResponses: true
+
+  environment:  
+    DYNAMO_TABLE_NAME: ${self:custom.dynamoTableName}
+    S3_BUCKET_NAME: ${self:custom.s3BucketName}
 
 
 functions:
+  
   authorizerFunc:
     handler: index.authorizer
-    
-  CreateLotFn:
-    handler: index.CreateLotFn
-    events:
-      - httpApi:
-        method: POST
-        path: /lots
+    memorySize: 128
+    timeout: 5
 
-  ListLotsFn:
-    handler: index.ListLotsFn
+  
+  createLot:
+    handler: index.CreateLotFn
+    memorySize: 256
+    timeout: 10
     events:
       - httpApi:
-        method: GET
-        path: /lots
+          method: POST
+          path: /lots
+
   
-  ReserveLotFn:
-    handler: index.ReserveLotFn
-    vents:
+  generatePresignedUrl:
+    handler: index.GeneratePresignedUrlFn
+    memorySize: 128
+    timeout: 5
+    events:
       - httpApi:
-        method: UPDATE
-        path: /lots/{lotId}/reserve
+          method: POST
+          path: /lots/{lotId}/presigned
+
+  
+  listLots:
+    handler: index.ListLotsFn
+    memorySize: 128
+    timeout: 5
+    events:
+      - httpApi:
+          method: GET
+          path: /lots
+
+  
+  reserveLot:
+    handler: index.ReserveLotFn
+    memorySize: 128
+    timeout: 5
+    events:
+      - httpApi:
+          method: PUT   
+          path: /lots/{lotId}/reserve
+
+
+resources:
+  Resources:
+    LotsTable:
+      Type: AWS::DynamoDB::Table
+      Properties:
+        TableName: ${self:custom.dynamoTableName}
+        BillingMode: PAY_PER_REQUEST
+        AttributeDefinitions:
+          - AttributeName: pk          
+            AttributeType: S
+          - AttributeName: sk          
+            AttributeType: S
+          - AttributeName: material    
+            AttributeType: S
+          - AttributeName: status      
+            AttributeType: S
+          - AttributeName: ownerId     
+            AttributeType: S
+          - AttributeName: createdAt   
+            AttributeType: S
+          - AttributeName: receiverId  
+            AttributeType: S
+          - AttributeName: createdDay  
+            AttributeType: S
+        KeySchema:
+          - AttributeName: pk 
+            KeyType: HASH
+          - AttributeName: sk 
+            KeyType: RANGE
+        TimeToLiveSpecification:
+          AttributeName: expiresAt
+          Enabled: true
+        GlobalSecondaryIndexes:
+          - IndexName: GSI1_MaterialStatus
+            KeySchema:
+              - AttributeName: material 
+                KeyType: HASH
+              - AttributeName: status   
+                KeyType: RANGE
+            Projection:
+              ProjectionType: ALL
+
+          - IndexName: GSI2_OwnerCreated
+            KeySchema:
+              - AttributeName: ownerId   
+                KeyType: HASH
+              - AttributeName: createdAt 
+                KeyType: RANGE
+            Projection:
+              ProjectionType: INCLUDE
+              NonKeyAttributes: [material, status, price, scheme]
+
+          - IndexName: GSI3_ReceiverStatus
+            KeySchema:
+              - AttributeName: receiverId 
+                KeyType: HASH
+              - AttributeName: status     
+                KeyType: RANGE
+            Projection:
+              ProjectionType: INCLUDE
+              NonKeyAttributes: [material, status, price, scheme]
+
+          - IndexName: GSI5_CreatedDay
+            KeySchema:
+              - AttributeName: createdDay 
+                KeyType: HASH
+              - AttributeName: createdAt  
+                KeyType: RANGE
+            Projection:
+              ProjectionType: ALL
+
+
+custom:
+  dynamoTableName: ${self:service}-lots-${opt:stage, 'dev'}
+  s3BucketName:   ${self:service}-lots-${opt:stage, 'dev'}
