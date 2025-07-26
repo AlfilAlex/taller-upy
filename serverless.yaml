@@ -10,7 +10,7 @@ provider:
   iam:
     role: arn:aws:iam::676373376027:role/recreahub-lambda-rol
 
-  httpApi:  
+  httpApi:
     cors: true
     authorizers:
       customAuthorizer:
@@ -19,18 +19,16 @@ provider:
         payloadVersion: '2.0'
         enableSimpleResponses: true
 
-  environment:  
+  environment:
     DYNAMO_TABLE_NAME: ${self:custom.dynamoTableName}
     S3_BUCKET_NAME: ${self:custom.s3BucketName}
 
 
 functions:
-  
   authorizerFunc:
     handler: index.authorizer
     memorySize: 128
     timeout: 5
-
   
   createLot:
     handler: index.CreateLotFn
@@ -40,7 +38,6 @@ functions:
       - httpApi:
           method: POST
           path: /lots
-
   
   generatePresignedUrl:
     handler: index.GeneratePresignedUrlFn
@@ -50,7 +47,6 @@ functions:
       - httpApi:
           method: POST
           path: /lots/{lotId}/presigned
-
   
   listLots:
     handler: index.ListLotsFn
@@ -60,7 +56,6 @@ functions:
       - httpApi:
           method: GET
           path: /lots
-
   
   reserveLot:
     handler: index.ReserveLotFn
