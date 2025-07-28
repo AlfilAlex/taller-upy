@@ -1,18 +1,18 @@
-import { DynamoClient } from '../utils/dynamoClient'
-import { Presigner } from '../utils/presigner';
+import { DynamoClient } from '../utils/dynamoClient.js'
+import { Presigner } from '../utils/presigner.js';
 
 const client = new DynamoClient();
 const presigner = new Presigner();
-export const createLotFn = (lot) => {
-
-    client.putItem(lot.lotInfo);
+export const CreateLotFn = async (lot) => {
+    const createdDay = new Date().toISOString().slice(0, 10).replace(/-/g, "");
+    await client.putItem({ ...lot, pk: `lot#${lot.id}`, sk: "meta", createdDay });
     return {
         statusCode: 201,
-        body: JSON.stringify(lot.lotInfo)
+        body: JSON.stringify(lot)
     }
 }
 
-export const generatePresignedUrl = async (imagesInfoArray) => {
+export const GeneratePresignedUrlFn = async (imagesInfoArray) => {
     const presignedUrls = await Promise.all(imagesInfoArray.map(async (imagesInfo) => {
         const { mimeType, fileSize, sha256, userId } = imagesInfo;
         const presignedUrl = await presigner.presign(mimeType, fileSize, sha256, userId);

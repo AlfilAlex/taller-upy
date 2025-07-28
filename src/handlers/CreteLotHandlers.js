@@ -1,6 +1,6 @@
-import { createLotFn } from '../controllers/CreateLotFn';
+import { CreateLotFn, GeneratePresignedUrlFn } from '../controllers/CreateLotFn.js';
 
-export const generatePresignedUrlHandler = async (event) => {
+export const GeneratePresignedUrlFnHandler = async (event) => {
     if (!event || !event.body) {
         return {
             statusCode: 400,
@@ -9,7 +9,7 @@ export const generatePresignedUrlHandler = async (event) => {
     }
     try {
         const imagesInfoArray = JSON.parse(event.body);
-        const response = await generatePresignedUrl(imagesInfoArray);
+        const response = await GeneratePresignedUrlFn(imagesInfoArray);
         return {
             statusCode: response.statusCode,
             body: response.body
@@ -32,13 +32,14 @@ export const createLotHandler = async (event) => {
     }
     try {
         const lot = JSON.parse(event.body);
-        if (!lot || !lot.lotInfo || !lot.lotInfo.userId) {
+        const isValidLot = validateAllLotInfo(lot);
+        if (!isValidLot) {
             return {
                 statusCode: 400,
-                body: "Invalid lot information"
+                body: { mensage: "Invalid lot information", lot }
             };
         }
-        const response = createLotFn(lot);
+        const response = await CreateLotFn(lot);
         return {
             statusCode: response.statusCode,
             body: response.body
@@ -50,4 +51,29 @@ export const createLotHandler = async (event) => {
             body: "Internal Server Error"
         };
     }
+}
+
+
+
+const validateAllLotInfo = (lot) => {
+    // Aquí puedes implementar la lógica de validación para todos los campos del lote
+    // Por ejemplo, verificar que los campos requeridos estén presentes y tengan el formato correcto
+    if (!lot.material) {
+        console.error("Invalid material:", lot.material);
+        return false;
+    }
+    if (!lot.status) {
+        console.error("Invalid status:", lot.status);
+        return false;
+    }
+    if (!lot.scheme) {
+        console.error("Invalid scheme:", lot.scheme);
+        return false;
+    }
+    if (typeof lot.price !== 'number' || (lot.price < 0 && lot.price !== 0)) {
+        console.error("Invalid price:", lot.price);
+        return false;
+    }
+    // Agrega más validaciones según sea necesario
+    return true;
 }

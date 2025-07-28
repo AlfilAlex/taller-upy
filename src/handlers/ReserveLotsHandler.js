@@ -1,11 +1,10 @@
-import { reserveLotsFn } from '../services/reserveLotsService';
+import { ReserveLotFn } from '../controllers/ReserveLotFn.js';
 
 export const reserveLotsHandler = async (event, context) => {
     const { lotId, userId } = JSON.parse(event.body);
 
     try {
-        // Aquí se llamaría a la función que maneja la reserva de lotes
-        const result = await reserveLotsFn(lotId, userId);
+        const result = await ReserveLotFn(lotId, userId);
 
         return {
             statusCode: 200,

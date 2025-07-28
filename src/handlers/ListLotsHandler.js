@@ -1,4 +1,4 @@
-import { ListLotsFn } from '../functions/ListLotsFn.js';
+import { ListLotsFn } from '../controllers/ListLotsFn.js';
 
 export const ListLotHandler = async (event) => {
     const searchParams = event.queryStringParameters || {};

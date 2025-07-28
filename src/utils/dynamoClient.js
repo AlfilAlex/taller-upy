@@ -1,4 +1,4 @@
-import { LotModel } from "./dynamoModel";
+import { LotModel } from "./dynamoModel.js";
 
 
 
@@ -12,6 +12,7 @@ export class DynamoClient {
             const result = await this.lotModel.create(item);
             return result;
         } catch (error) {
+            console.error(`Failed to put item: ${JSON.stringify(item)}`);
             console.error("Error putting item:", error);
             throw error;
         }

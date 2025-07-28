@@ -1,4 +1,4 @@
-import { DynamoClient } from '../utils/dynamoClient'
+import { DynamoClient } from '../utils/dynamoClient.js'
 export const ListLotsFn = (searchParams) => {
     const client = new DynamoClient();
     try {

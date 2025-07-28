@@ -1,4 +1,4 @@
-service: recreahub-v3
+service: recreahub
 frameworkVersion: '3'
 
 provider:
@@ -10,7 +10,7 @@ provider:
   iam:
     role: arn:aws:iam::676373376027:role/recreahub-lambda-rol
 
-  httpApi:
+  httpApi:  
     cors: true
     authorizers:
       customAuthorizer:
@@ -19,27 +19,34 @@ provider:
         payloadVersion: '2.0'
         enableSimpleResponses: true
 
-  environment:
+  environment:  
     DYNAMO_TABLE_NAME: ${self:custom.dynamoTableName}
     S3_BUCKET_NAME: ${self:custom.s3BucketName}
+    MUST_CREATE_TABLE: true
+    # NODE_PATH: /opt/
 
 
 functions:
+  
   authorizerFunc:
     handler: index.authorizer
     memorySize: 128
     timeout: 5
+
   
   createLot:
-    handler: index.CreateLotFn
+    handler: index.createLot
     memorySize: 256
     timeout: 10
     events:
       - httpApi:
           method: POST
           path: /lots
+    layers:
+      - {Ref: CommonModulesLambdaLayer}
+
   
-  generatePresignedUrl:
+  GeneratePresignedUrlFn:
     handler: index.GeneratePresignedUrlFn
     memorySize: 128
     timeout: 5
@@ -47,96 +54,122 @@ functions:
       - httpApi:
           method: POST
           path: /lots/{lotId}/presigned
+    layers:
+      - {Ref: CommonModulesLambdaLayer}
+
   
   listLots:
-    handler: index.ListLotsFn
+    handler: index.listLots
     memorySize: 128
     timeout: 5
     events:
       - httpApi:
           method: GET
           path: /lots
+    layers:
+      - {Ref: CommonModulesLambdaLayer}
+
   
   reserveLot:
-    handler: index.ReserveLotFn
+    handler: index.reserveLots
     memorySize: 128
     timeout: 5
     events:
       - httpApi:
           method: PUT   
           path: /lots/{lotId}/reserve
+    layers:
+      - {Ref: CommonModulesLambdaLayer}
 
+layers:
+  CommonModules:
+    path: ../layers/common
+    compatibleRuntimes:
+      - nodejs20.x
+    description: Common layer for shared dependencies
 
-resources:
-  Resources:
-    LotsTable:
-      Type: AWS::DynamoDB::Table
-      Properties:
-        TableName: ${self:custom.dynamoTableName}
-        BillingMode: PAY_PER_REQUEST
-        AttributeDefinitions:
-          - AttributeName: pk          
-            AttributeType: S
-          - AttributeName: sk          
-            AttributeType: S
-          - AttributeName: material    
-            AttributeType: S
-          - AttributeName: status      
-            AttributeType: S
-          - AttributeName: ownerId     
-            AttributeType: S
-          - AttributeName: createdAt   
-            AttributeType: S
-          - AttributeName: receiverId  
-            AttributeType: S
-          - AttributeName: createdDay  
-            AttributeType: S
-        KeySchema:
-          - AttributeName: pk 
-            KeyType: HASH
-          - AttributeName: sk 
-            KeyType: RANGE
-        TimeToLiveSpecification:
-          AttributeName: expiresAt
-          Enabled: true
-        GlobalSecondaryIndexes:
-          - IndexName: GSI1_MaterialStatus
-            KeySchema:
-              - AttributeName: material 
-                KeyType: HASH
-              - AttributeName: status   
-                KeyType: RANGE
-            Projection:
-              ProjectionType: ALL
+# resources:
+#   Resources:
+#     LotsTable:
+#       Type: AWS::DynamoDB::Table
+#       Properties:
+#         TableName: ${self:custom.dynamoTableName}
+#         BillingMode: PAY_PER_REQUEST
 
-          - IndexName: GSI2_OwnerCreated
-            KeySchema:
-              - AttributeName: ownerId   
-                KeyType: HASH
-              - AttributeName: createdAt 
-                KeyType: RANGE
-            Projection:
-              ProjectionType: INCLUDE
-              NonKeyAttributes: [material, status, price, scheme]
+#         # --- Atributos que participan en claves primarias o índices ---
+#         AttributeDefinitions:
+#           - AttributeName: pk          # HASH de la tabla
+#             AttributeType: S
+#           - AttributeName: sk          # RANGE de la tabla
+#             AttributeType: S
+#           - AttributeName: material    # HASH de GSI 1
+#             AttributeType: S
+#           - AttributeName: status      # RANGE de GSI 1 y GSI 3
+#             AttributeType: S
+#           - AttributeName: ownerId     # HASH de GSI 2
+#             AttributeType: S
+#           - AttributeName: createdAt   # RANGE de GSI 2 y GSI 5
+#             AttributeType: S
+#           - AttributeName: receiverId  # HASH de GSI 3
+#             AttributeType: S
+#           - AttributeName: createdDay  # HASH de GSI 5
+#             AttributeType: S
 
-          - IndexName: GSI3_ReceiverStatus
-            KeySchema:
-              - AttributeName: receiverId 
-                KeyType: HASH
-              - AttributeName: status     
-                KeyType: RANGE
-            Projection:
-              ProjectionType: INCLUDE
-              NonKeyAttributes: [material, status, price, scheme]
+#         # --- Clave primaria de la tabla ---
+#         KeySchema:
+#           - AttributeName: pk
+#             KeyType: HASH
+#           - AttributeName: sk
+#             KeyType: RANGE
 
-          - IndexName: GSI5_CreatedDay
-            KeySchema:
-              - AttributeName: createdDay 
-                KeyType: HASH
-              - AttributeName: createdAt  
-                KeyType: RANGE
-            Projection:
-              ProjectionType: ALL
+#         # --- TTL ---
+#         TimeToLiveSpecification:
+#           AttributeName: expiresAt
+#           Enabled: true
+
+#         # --- Índices secundarios globales ---
+#         GlobalSecondaryIndexes:
+#           # 1) material + status
+#           - IndexName: GSI1_MaterialStatus
+#             KeySchema:
+#               - AttributeName: material
+#                 KeyType: HASH
+#               - AttributeName: status
+#                 KeyType: RANGE
+#             Projection:
+#               ProjectionType: ALL      # Proyecta todos los atributos
+
+#           # 2) ownerId + createdAt  →  para lotes de un generador
+#           - IndexName: GSI2_OwnerCreated
+#             KeySchema:
+#               - AttributeName: ownerId
+#                 KeyType: HASH
+#               - AttributeName: createdAt
+#                 KeyType: RANGE
+#             Projection:
+#               ProjectionType: INCLUDE
+#               NonKeyAttributes: [material, status, price, scheme]
+
+#           # 3) receiverId + status  →  para lotes “vistos” por un receptor
+#           - IndexName: GSI3_ReceiverStatus
+#             KeySchema:
+#               - AttributeName: receiverId
+#                 KeyType: HASH
+#               - AttributeName: status
+#                 KeyType: RANGE
+#             Projection:
+#               ProjectionType: INCLUDE
+#               NonKeyAttributes: [material, price, scheme]   # ⬅️ status eliminado
+
+#           # 5) createdDay + createdAt  →  para feeds diarios
+#           - IndexName: GSI5_CreatedDay
+#             KeySchema:
+#               - AttributeName: createdDay
+#                 KeyType: HASH
+#               - AttributeName: createdAt
+#                 KeyType: RANGE
+#             Projection:
+#               ProjectionType: ALL
 
 
 custom:

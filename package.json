@@ -1,16 +1,19 @@
 {
   "name": "recreahub",
-  "type": "module",
   "version": "1.0.0",
   "description": "Plataforma digital que conecta empresas que desechan materiales de alta calidad (madera, vidrio, tela, metal, acrílico) con artesanos, makers y carpinteros que los transforman en productos de valor. Promueve la economía circular, reduce costos de materia prima y otorga reputación ambiental a los donadores.",
   "main": "index.js",
+  "type": "module",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "build-layer": "mkdir -p ../layers/common/nodejs && npm install --omit=dev --prefix ../layers/common/nodejs",
+    "deploy": "npm run build-layer && npx osls deploy --stage dev --verbose"
   },
   "author": "",
   "license": "ISC",
   "devDependencies": {
-    "@aws-sdk/client-dynamodb": "^3.848.0"
+    "@aws-sdk/client-dynamodb": "^3.848.0",
+    "osls": "^3.51.2"
   },
   "dependencies": {
     "@aws-sdk/s3-request-presigner": "^3.850.0",
