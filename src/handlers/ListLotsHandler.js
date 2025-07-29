@@ -1,9 +1,9 @@
 import { ListLotsFn } from '../controllers/ListLotsFn.js';
 
 export const ListLotHandler = async (event) => {
-    const { status, day } = event.queryStringParameters || {};
+    const { status, createdDay } = event.queryStringParameters || {};
     try {
-        const items = await ListLotsFn(status, day);
+        const items = await ListLotsFn(status, createdDay);
         return {
             statusCode: items.statusCode,
             body: items.body,
