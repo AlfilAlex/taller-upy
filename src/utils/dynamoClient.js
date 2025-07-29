@@ -28,7 +28,7 @@ export class DynamoClient {
             if (!openLotsToday) {
                 throw new Error(`Item with ID ${itemId} not found`);
             }
-            return result;
+            return openLotsToday;
         } catch (error) {
             console.error("Error getting item:", error);
             throw error;
