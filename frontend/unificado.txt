@@ -1,0 +1,954 @@
+
+=== ./App.jsx ===
+// src/App.jsx
+import React from "react";
+import { Routes, Route, Navigate } from "react-router-dom";
+
+import RoleSelect         from "./components/RoleSelect.jsx";
+import GeneratorDashboard from "./components/GeneratorDashboard.jsx";
+import Marketplace        from "./components/Marketplace.jsx";
+import LotDetail          from "./components/LotDetail.jsx";
+import Confirmation       from "./components/Confirmation.jsx";
+
+import ProtectedRoute from "./auth/ProtectedRoute.jsx";      // 👈 nuevo
+import AuthBar        from "./components/AuthBar.jsx";       // 👈 nuevo
+
+export default function App() {
+  return (
+    <>
+      {/* barra superior con botones de autenticación */}
+      <AuthBar />                                            {/* 👈 nuevo */}
+
+      <Routes>
+        {/* --- Públicas --- */}
+        <Route path="/" element={<RoleSelect />} />
+
+        {/* --- Protegidas --- */}
+        <Route
+          path="/generador"
+          element={
+            <ProtectedRoute>
+              <GeneratorDashboard />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/receptor"
+          element={
+            <ProtectedRoute>
+              <Marketplace />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/receptor/lote/:id"
+          element={
+            <ProtectedRoute>
+              <LotDetail />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/receptor/confirmacion/:id"
+          element={
+            <ProtectedRoute>
+              <Confirmation />
+            </ProtectedRoute>
+          }
+        />
+
+        {/* Fallback */}
+        <Route path="*" element={<Navigate to="/" />} />
+      </Routes>
+    </>
+  );
+}
+
+=== ./auth/cognitoConfig.ts ===
+export const cognitoAuthConfig = {
+  authority: "https://recreahub-auth.us-east-1.amazoncognito.com",
+  client_id: "bf3lu8k2nf72luja03i7jig2a",
+  redirect_uri: window.location.origin,
+  response_type: "code",
+  scope: "openid email profile",
+  post_logout_redirect_uri: window.location.origin,
+};
+
+=== ./auth/cognitoUrls.js ===
+const domain = "https://us-east-1tur77qjjm.auth.us-east-1.amazoncognito.com"; //
+const clientId = "bf3lu8k2nf72luja03i7jig2a"; //
+const baseParams = `client_id=bf3lu8k2nf72luja03i7jig2a&response_type=code&scope=email+openid+phone&redirect_uri=http%3A%2F%2Flocalhost%3A5173`;
+
+
+
+// Hosted UI endpoints
+export const loginUrl = `${domain}/login?${baseParams}`; // pantalla login (incluye link a signup)
+export const signupUrl = `${domain}/signup?${baseParams}`; // abre formulario de registro directo
+export const logoutUrl = `${domain}/logout?client_id=${clientId}&logout_uri=${encodeURIComponent(
+  window.location.origin
+)}`;
+
+
+export const cognitoAuthConfig = {
+  authority: "https://us-east-1tur77qjjm.auth.us-east-1.amazoncognito.com",
+  client_id: "bf3lu8k2nf72luja03i7jig2a",
+  redirect_uri: window.location.origin,
+  response_type: "code",
+  scope: "openid email profile",
+  post_logout_redirect_uri: window.location.origin,
+};
+
+=== ./auth/ProtectedRoute.jsx ===
+import { useAuth } from "react-oidc-context";
+import React from "react";
+
+export default function ProtectedRoute({ children }) {
+  const auth = useAuth();
+
+  if (auth.isLoading) return <p>Cargando auth…</p>;
+  if (auth.error) return <p>Error: {auth.error.message}</p>;
+
+  if (!auth.isAuthenticated) {
+    auth.signinRedirect(); // redirección OIDC
+    return <p>Redirigiendo a login…</p>; // fallback mientras navega
+  }
+  return children;
+}
+
+=== ./components/AuthBar.jsx ===
+import { useAuth } from "react-oidc-context";
+import { loginUrl, signupUrl, logoutUrl } from "../auth/cognitoUrls.js";
+
+export default function AuthBar() {
+  const auth = useAuth();
+
+  if (auth.isLoading) return null;              // evita parpadeo
+  if (auth.error)    return <p>⚠️ {auth.error.message}</p>;
+
+  // -------- NO autenticado ----------
+  if (!auth.isAuthenticated) {
+    return (
+      <div className="flex gap-4">
+        <a href={loginUrl}  className="btn-primary">Iniciar sesión</a>
+        <a href={signupUrl} className="btn-secondary">Crear cuenta</a>
+      </div>
+    );
+  }
+
+  // -------- SÍ autenticado ----------
+  const { email } = auth.user?.profile ?? {};
+  return (
+    <div className="flex gap-4 items-center">
+      <span>{email}</span>
+      <a href={logoutUrl} className="btn-secondary">Cerrar sesión</a>
+    </div>
+  );
+}
+
+=== ./components/Confirmation.jsx ===
+import React from 'react';
+import { useParams } from 'react-router-dom';
+import QRCode from 'react-qr-code';
+import { Typography, Paper, Box } from '@mui/material';
+
+/**
+ * Pantalla de confirmación que muestra un código de reserva generado a
+ * partir del id del lote reservado.  Utiliza la librería react-qr-code
+ * para renderizar un QR que se puede escanear.  También muestra el
+ * valor textual del código al usuario.
+ */
+export default function Confirmation() {
+  const { id } = useParams();
+  const reservaCode = `RESERVA-${id}-${Date.now()}`;
+  return (
+    <Box sx={{ padding: 2 }}>
+      <Paper sx={{ padding: 4, textAlign: 'center', marginTop: 4 }}>
+        <Typography variant="h4" gutterBottom>
+          ¡Reserva Confirmada!
+        </Typography>
+        <Typography variant="h6" gutterBottom>
+          Código de Reserva:
+        </Typography>
+        <Typography variant="subtitle1" gutterBottom>
+          {reservaCode}
+        </Typography>
+        <Box sx={{ display: 'flex', justifyContent: 'center', mt: 2 }}>
+          <QRCode value={reservaCode} />
+        </Box>
+      </Paper>
+    </Box>
+  );
+}
+=== ./components/GeneratorDashboard.jsx ===
+import React, { useState, useEffect } from 'react';
+import {
+  TextField,
+  Button,
+  Card,
+  CardContent,
+  Typography,
+  Grid,
+  MenuItem,
+  Select,
+  FormControl,
+  InputLabel,
+  Box,
+  Snackbar
+} from '@mui/material';
+import Alert from '@mui/material/Alert';
+import { createLot, listLots } from '../utils/api';
+
+// Catálogos de opciones permitidas según el modelo de DynamoDB.
+const MATERIALS = ['madera', 'metal', 'vidrio', 'textil', 'plastico'];
+const CONDITIONS = ['A', 'B', 'C'];
+const SCHEMES = ['donacion', 'venta'];
+
+/**
+ * Panel principal para el rol Generador.  Permite publicar nuevos lotes y
+ * muestra la lista de lotes que pertenecen al usuario activo.  Los datos
+ * del usuario se almacenan en localStorage para persistir entre
+ * recargas.  Todas las operaciones contra el backend se realizan
+ * mediante las funciones definidas en src/utils/api.js.
+ */
+export default function GeneratorDashboard() {
+  const [userId, setUserId] = useState('');
+  const [newLot, setNewLot] = useState({
+    material: '',
+    condition: 'B',
+    weightKg: '',
+    scheme: 'donacion',
+    price: '',
+    addressLine1: '',
+    city: 'Mérida',
+    images: []
+  });
+  const [myLots, setMyLots] = useState([]);
+  const [notification, setNotification] = useState({ open: false, message: '', severity: 'success' });
+
+  // Al montar, genera o recupera un identificador de usuario único para el rol generador
+  useEffect(() => {
+    let uid = localStorage.getItem('generatorId');
+    if (!uid) {
+      uid = 'generator-' + Math.random().toString(36).substring(2, 9);
+      localStorage.setItem('generatorId', uid);
+    }
+    setUserId(uid);
+  }, []);
+
+  // Cuando el userId esté definido, carga los lotes publicados por este usuario
+  useEffect(() => {
+    if (userId) {
+      fetchLots();
+    }
+  }, [userId]);
+
+  // Solicita al backend la lista de lotes del generador
+  const fetchLots = async () => {
+    try {
+      const items = await listLots({ ownerId: userId });
+      setMyLots(Array.isArray(items) ? items : []);
+    } catch (err) {
+      console.error(err);
+      setNotification({ open: true, message: 'Error al obtener lotes', severity: 'error' });
+    }
+  };
+
+  // Actualiza los valores del formulario. Para el campo de imágenes se
+  // convierte FileList a un array normal.
+  const handleChange = (e) => {
+    const { name, value, files } = e.target;
+    if (name === 'images' && files) {
+      setNewLot((prev) => ({ ...prev, images: Array.from(files) }));
+    } else {
+      setNewLot((prev) => ({ ...prev, [name]: value }));
+    }
+  };
+
+  // Envía el formulario para publicar un lote en la base de datos
+  const handlePublish = async () => {
+    try {
+      if (!newLot.material || !newLot.weightKg || !newLot.addressLine1) {
+        setNotification({ open: true, message: 'Completa los campos obligatorios', severity: 'warning' });
+        return;
+      }
+      if (newLot.images.length < 2) {
+        setNotification({ open: true, message: 'Debes seleccionar al menos 2 imágenes', severity: 'warning' });
+        return;
+      }
+      const lotInfo = {
+        pk: 'lot#' + crypto.randomUUID(),
+        material: newLot.material,
+        condition: newLot.condition,
+        weightKg: Number(newLot.weightKg),
+        scheme: newLot.scheme,
+        price: newLot.scheme === 'donacion' ? 0 : Number(newLot.price),
+        ownerId: userId,
+        address: {
+          line1: newLot.addressLine1,
+          city: newLot.city
+        },
+        images: newLot.images.map((f) => f.name)
+      };
+      await createLot(lotInfo);
+      setNotification({ open: true, message: 'Lote publicado correctamente', severity: 'success' });
+      // Restablece el formulario a sus valores por defecto
+      setNewLot({
+        material: '',
+        condition: 'B',
+        weightKg: '',
+        scheme: 'donacion',
+        price: '',
+        addressLine1: '',
+        city: 'Mérida',
+        images: []
+      });
+      fetchLots();
+    } catch (err) {
+      console.error(err);
+      setNotification({ open: true, message: 'Error al publicar el lote', severity: 'error' });
+    }
+  };
+
+  return (
+    <Box sx={{ padding: 2 }}>
+      <Typography variant="h4" gutterBottom>
+        Panel del Generador
+      </Typography>
+      <Grid container spacing={2}>
+        {/* Formulario de publicación */}
+        <Grid item xs={12} md={6}>
+          <Card>
+            <CardContent>
+              <Typography variant="h5" gutterBottom>
+                Publicar Nuevo Lote
+              </Typography>
+              <FormControl fullWidth margin="normal">
+                <InputLabel id="material-label">Material</InputLabel>
+                <Select
+                  labelId="material-label"
+                  name="material"
+                  value={newLot.material}
+                  label="Material"
+                  onChange={handleChange}
+                >
+                  {MATERIALS.map((mat) => (
+                    <MenuItem key={mat} value={mat}>
+                      {mat}
+                    </MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
+              <FormControl fullWidth margin="normal">
+                <InputLabel id="condition-label">Condición</InputLabel>
+                <Select
+                  labelId="condition-label"
+                  name="condition"
+                  value={newLot.condition}
+                  label="Condición"
+                  onChange={handleChange}
+                >
+                  {CONDITIONS.map((c) => (
+                    <MenuItem key={c} value={c}>
+                      {c}
+                    </MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
+              <TextField
+                label="Peso (kg)"
+                name="weightKg"
+                type="number"
+                fullWidth
+                margin="normal"
+                value={newLot.weightKg}
+                onChange={handleChange}
+              />
+              <FormControl fullWidth margin="normal">
+                <InputLabel id="scheme-label">Esquema</InputLabel>
+                <Select
+                  labelId="scheme-label"
+                  name="scheme"
+                  value={newLot.scheme}
+                  label="Esquema"
+                  onChange={handleChange}
+                >
+                  {SCHEMES.map((s) => (
+                    <MenuItem key={s} value={s}>
+                      {s}
+                    </MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
+              {newLot.scheme === 'venta' && (
+                <TextField
+                  label="Precio"
+                  name="price"
+                  type="number"
+                  fullWidth
+                  margin="normal"
+                  value={newLot.price}
+                  onChange={handleChange}
+                />
+              )}
+              <TextField
+                label="Dirección (línea 1)"
+                name="addressLine1"
+                fullWidth
+                margin="normal"
+                value={newLot.addressLine1}
+                onChange={handleChange}
+              />
+              <TextField
+                label="Ciudad"
+                name="city"
+                fullWidth
+                margin="normal"
+                value={newLot.city}
+                onChange={handleChange}
+              />
+              <Box sx={{ marginY: 2 }}>
+                <Typography variant="body1">Imágenes (mín. 2)</Typography>
+                <input type="file" name="images" multiple accept="image/*" onChange={handleChange} />
+              </Box>
+              <Button variant="contained" color="primary" onClick={handlePublish}>
+                Publicar Lote
+              </Button>
+            </CardContent>
+          </Card>
+        </Grid>
+        {/* Lista de lotes publicados */}
+        <Grid item xs={12} md={6}>
+          <Typography variant="h5" gutterBottom>
+            Mis Lotes Publicados
+          </Typography>
+          {myLots && myLots.length > 0 ? (
+            myLots.map((lote) => (
+              <Card key={lote.pk} sx={{ marginBottom: 2 }}>
+                <CardContent>
+                  <Typography variant="h6">{lote.material}</Typography>
+                  <Typography variant="body2">
+                    Condición: {lote.condition} | Peso: {lote.weightKg} kg
+                  </Typography>
+                  <Typography variant="body2">
+                    Esquema: {lote.scheme}
+                    {lote.scheme === 'venta' && ` | Precio: ${lote.price}`}
+                  </Typography>
+                  <Typography variant="caption">Estado: {lote.status || 'OPEN'}</Typography>
+                </CardContent>
+              </Card>
+            ))
+          ) : (
+            <Typography>No tienes lotes publicados.</Typography>
+          )}
+        </Grid>
+      </Grid>
+      <Snackbar
+        open={notification.open}
+        autoHideDuration={4000}
+        onClose={() => setNotification({ ...notification, open: false })}
+      >
+        <Alert
+          severity={notification.severity}
+          onClose={() => setNotification({ ...notification, open: false })}
+        >
+          {notification.message}
+        </Alert>
+      </Snackbar>
+    </Box>
+  );
+}
+=== ./components/LotDetail.jsx ===
+import React, { useState, useEffect } from 'react';
+import { useParams, useNavigate } from 'react-router-dom';
+import {
+  Card,
+  CardContent,
+  Button,
+  Typography,
+  Box
+} from '@mui/material';
+import { listLots, reserveLot } from '../utils/api';
+
+/**
+ * Pantalla de detalle para un lote específico.  Carga la información del
+ * lote a partir de su clave primaria (pk) y permite reservarlo si se
+ * encuentra disponible.  Después de reservar, redirige a la pantalla
+ * de confirmación.
+ */
+export default function LotDetail() {
+  const { id } = useParams();
+  const navigate = useNavigate();
+  const [lot, setLot] = useState(null);
+  const [userId, setUserId] = useState('');
+
+  useEffect(() => {
+    let uid = localStorage.getItem('receptorId');
+    if (!uid) {
+      uid = 'receptor-' + Math.random().toString(36).substring(2, 9);
+      localStorage.setItem('receptorId', uid);
+    }
+    setUserId(uid);
+    fetchLot();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [id]);
+
+  const fetchLot = async () => {
+    try {
+      const items = await listLots({ pk: id });
+      if (Array.isArray(items)) {
+        const found = items.find((item) => item.pk === id);
+        setLot(found || null);
+      } else {
+        setLot(items);
+      }
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  const handleReserve = async () => {
+    try {
+      await reserveLot(id, userId);
+      navigate(`/receptor/confirmacion/${encodeURIComponent(id)}`);
+    } catch (err) {
+      console.error(err);
+      alert('Error al reservar el lote');
+    }
+  };
+
+  if (!lot) {
+    return <Typography>Cargando...</Typography>;
+  }
+
+  const isAvailable = !lot.status || lot.status === 'OPEN';
+
+  return (
+    <Box sx={{ padding: 2 }}>
+      <Card sx={{ padding: 2 }}>
+        <CardContent>
+          <Typography variant="h5" gutterBottom>
+            {lot.material}
+          </Typography>
+          <Typography variant="body1" paragraph>
+            Condición: {lot.condition}
+          </Typography>
+          <Typography variant="body1" paragraph>
+            Peso: {lot.weightKg} kg
+          </Typography>
+          <Typography variant="body1" paragraph>
+            Esquema: {lot.scheme}
+            {lot.scheme === 'venta' && ` | Precio: ${lot.price}`}
+          </Typography>
+          {lot.address && (
+            <Typography variant="body1" paragraph>
+              Dirección: {lot.address.line1}, {lot.address.city}
+            </Typography>
+          )}
+          <Typography variant="subtitle2">
+            Estado: {lot.status || 'OPEN'}
+          </Typography>
+          <Button
+            variant="contained"
+            color="primary"
+            onClick={handleReserve}
+            disabled={!isAvailable}
+            sx={{ mt: 2 }}
+          >
+            {isAvailable ? 'Reservar Lote' : 'Lote no disponible'}
+          </Button>
+        </CardContent>
+      </Card>
+    </Box>
+  );
+}
+=== ./components/Marketplace.jsx ===
+import React, { useState, useEffect } from 'react';
+import {
+  Grid,
+  Card,
+  CardContent,
+  CardActions,
+  Button,
+  TextField,
+  Typography,
+  Box
+} from '@mui/material';
+import { useNavigate } from 'react-router-dom';
+import { listLots } from '../utils/api';
+
+/**
+ * Vista de marketplace para el rol receptor.  Muestra un listado de lotes
+ * disponibles y permite filtrar por material o dirección.  Cuando el
+ * usuario hace clic en "Ver Detalles" se navega a la pantalla de
+ * detalle del lote.
+ */
+export default function Marketplace() {
+  const navigate = useNavigate();
+  const [userId, setUserId] = useState('');
+  const [lots, setLots] = useState([]);
+  const [filter, setFilter] = useState('');
+
+  // Obtiene un identificador de receptor único y carga los lotes disponibles
+  useEffect(() => {
+    let uid = localStorage.getItem('receptorId');
+    if (!uid) {
+      uid = 'receptor-' + Math.random().toString(36).substring(2, 9);
+      localStorage.setItem('receptorId', uid);
+    }
+    setUserId(uid);
+    fetchLots();
+  }, []);
+
+  const fetchLots = async () => {
+    try {
+      const items = await listLots({ status: 'OPEN' });
+      setLots(Array.isArray(items) ? items : []);
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  // Filtra los lotes en memoria según el texto introducido
+  const lotsFiltered = lots.filter((l) => {
+    const text = filter.toLowerCase();
+    return (
+      (l.material && l.material.toLowerCase().includes(text)) ||
+      (l.address?.line1 && l.address.line1.toLowerCase().includes(text))
+    );
+  });
+
+  return (
+    <Box sx={{ padding: 2 }}>
+      <Typography variant="h4" gutterBottom>
+        Marketplace de Lotes
+      </Typography>
+      <TextField
+        label="Buscar por material o dirección..."
+        variant="outlined"
+        fullWidth
+        margin="normal"
+        value={filter}
+        onChange={(e) => setFilter(e.target.value)}
+      />
+      <Grid container spacing={2}>
+        {lotsFiltered.map((lote) => (
+          <Grid item xs={12} md={6} lg={4} key={lote.pk}>
+            <Card>
+              <CardContent>
+                <Typography variant="h6">{lote.material}</Typography>
+                <Typography variant="body2" paragraph>
+                  Condición: {lote.condition} | Peso: {lote.weightKg} kg
+                </Typography>
+                <Typography variant="caption">
+                  Publicado por: {lote.ownerId}
+                </Typography>
+              </CardContent>
+              <CardActions>
+                <Button
+                  size="small"
+                  onClick={() => navigate(`/receptor/lote/${encodeURIComponent(lote.pk)}`)}
+                >
+                  Ver Detalles
+                </Button>
+              </CardActions>
+            </Card>
+          </Grid>
+        ))}
+      </Grid>
+    </Box>
+  );
+}
+=== ./components/RoleSelect.jsx ===
+import React from 'react';
+import { Button, Container, Typography, Box } from '@mui/material';
+import { useNavigate } from 'react-router-dom';
+
+// Componente inicial que permite elegir entre los roles de Generador y
+// Receptor.  Usa Material UI para un diseño sencillo y agradable.
+export default function RoleSelect() {
+  const navigate = useNavigate();
+  return (
+    <Container maxWidth="sm" sx={{ textAlign: 'center', marginTop: 8 }}>
+      <Typography variant="h4" gutterBottom>
+        Bienvenido a Re‑Crea HUB
+      </Typography>
+      <Typography variant="h6" gutterBottom>
+        Selecciona tu rol para continuar:
+      </Typography>
+      <Box sx={{ display: 'flex', justifyContent: 'center', gap: 2, mt: 4 }}>
+        <Button
+          variant="contained"
+          color="primary"
+          onClick={() => navigate('/generador')}
+        >
+          Soy Generador
+        </Button>
+        <Button
+          variant="contained"
+          color="secondary"
+          onClick={() => navigate('/receptor')}
+        >
+          Soy Receptor
+        </Button>
+      </Box>
+    </Container>
+  );
+}
+=== ./main.jsx ===
+// src/main.jsx
+import React from "react";
+import ReactDOM from "react-dom/client";
+import { BrowserRouter } from "react-router-dom";
+import { AuthProvider } from "react-oidc-context";
+import { WebStorageStateStore } from "oidc-client-ts";          // 👈
+import App from "./App.jsx";
+import { cognitoAuthConfig } from "./auth/cognitoConfig";
+
+const oidcConfig = {
+  ...cognitoAuthConfig,
+
+  // Guarda los tokens en localStorage para persistir al cerrar pestaña
+  userStore: new WebStorageStateStore({
+    store: window.localStorage          // o sessionStorage si prefieres
+  }),
+
+  // Limpia ?code= y ?state= de la URL después del login
+  onSigninCallback: () =>
+    window.history.replaceState({}, "", window.location.pathname)
+};
+
+ReactDOM.createRoot(document.getElementById("root")).render(
+  <React.StrictMode>
+    <AuthProvider {...oidcConfig}>
+      <BrowserRouter>
+        <App />
+      </BrowserRouter>
+    </AuthProvider>
+  </React.StrictMode>
+);
+
+=== ./utils/api.js ===
+// Funciones de ayuda para consumir la API REST del backend.  Se lee la
+// variable de entorno VITE_API_BASE_URL desde import.meta.env para
+// construir la URL base.  Cada función lanza un Error cuando la
+// respuesta HTTP no tiene éxito.
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '';
+
+// Si no se define una URL base de API (por ejemplo en un entorno local
+// sin backend), activa el modo de mocks.  Esto permite que la SPA
+// funcione de forma autónoma mientras se desarrolla el backend.
+const useMocks = !API_BASE_URL;
+
+// Base de datos en memoria para los mocks.  Cada lote tiene una clave
+// primaria (pk) con prefijo "lot#".  Esta estructura imita el esquema
+// empleado en DynamoDB.
+let mockLots = [];
+
+/**
+ * Obtiene un listado de lotes desde el backend.
+ * @param {Object} params Parámetros de consulta, como ownerId, status o pk.
+ * @returns {Promise<Array|Object>} Devuelve un array de lotes o un objeto cuando se busca un id concreto.
+ */
+export async function listLots(params = {}) {
+  if (useMocks) {
+    // Devuelve copias de los lotes en memoria aplicando filtros básicos.
+    const { ownerId, status, pk } = params;
+    let result = [...mockLots];
+    if (ownerId) {
+      result = result.filter((l) => l.ownerId === ownerId);
+    }
+    if (status) {
+      result = result.filter((l) => (l.status || 'OPEN') === status);
+    }
+    if (pk) {
+      const found = result.find((l) => l.pk === pk);
+      return found ? [found] : [];
+    }
+    return result;
+  }
+  // Llamada real a la API
+  const url = new URL(`${API_BASE_URL}/list-lots`);
+  Object.keys(params).forEach((key) => {
+    const value = params[key];
+    if (value !== undefined && value !== '') {
+      url.searchParams.append(key, value);
+    }
+  });
+  const resp = await fetch(url.toString(), { method: 'GET' });
+  if (!resp.ok) {
+    throw new Error(`Error listing lots: ${resp.status} ${resp.statusText}`);
+  }
+  const text = await resp.text();
+  try {
+    return JSON.parse(text);
+  } catch (e) {
+    return text;
+  }
+}
+
+/**
+ * Crea un nuevo lote en el backend.
+ * @param {Object} lotInfo Objeto con los campos de la tabla DynamoDB.
+ * @returns {Promise<Object>} Devuelve el lote creado.
+ */
+export async function createLot(lotInfo) {
+  if (useMocks) {
+    // Inserta el lote en la base de datos en memoria y devuelve una copia
+    mockLots.push({ ...lotInfo });
+    return lotInfo;
+  }
+  const resp = await fetch(`${API_BASE_URL}/create-lot`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ lotInfo })
+  });
+  if (!resp.ok) {
+    throw new Error(`Error creating lot: ${resp.status} ${resp.statusText}`);
+  }
+  const text = await resp.text();
+  try {
+    return JSON.parse(text);
+  } catch (e) {
+    return text;
+  }
+}
+
+/**
+ * Reserva un lote para un usuario.
+ * @param {string} lotId Clave primaria del lote (pk).
+ * @param {string} userId Identificador del receptor que reserva.
+ * @returns {Promise<Object>} Devuelve el lote actualizado.
+ */
+export async function reserveLot(lotId, userId) {
+  if (useMocks) {
+    // Busca el lote y marca su estado como LOCKED, asignando receiverId
+    const lote = mockLots.find((l) => l.pk === lotId);
+    if (!lote) {
+      throw new Error('Lote no encontrado');
+    }
+    lote.status = 'LOCKED';
+    lote.receiverId = userId;
+    // Para simplificar no implementamos TTL ni bloqueo temporal
+    return lote;
+  }
+  const resp = await fetch(`${API_BASE_URL}/reserve-lot`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ lotId, userId })
+  });
+  if (!resp.ok) {
+    throw new Error(`Error reserving lot: ${resp.status} ${resp.statusText}`);
+  }
+  const text = await resp.text();
+  try {
+    return JSON.parse(text);
+  } catch (e) {
+    return text;
+  }
+}
+
+/**
+ * Solicita al backend URLs firmadas para subir imágenes a S3.  Actualmente
+ * esta función no se utiliza en el MVP, pero se deja preparada para
+ * futuras iteraciones.
+ * @param {File[]} files Array de objetos File seleccionados por el usuario.
+ * @param {string} userId Identificador del usuario.
+ * @returns {Promise<Array>} Array con las URLs firmadas devuelto por el backend.
+ */
+export async function generatePresignedUrls(files, userId) {
+  if (useMocks) {
+    // Devuelve un array con URLs ficticias para cada archivo
+    return files.map((file, index) => ({ presignedUrl: `mock-url-${index}` }));
+  }
+  const payload = await Promise.all(
+    files.map(async (file) => {
+      return {
+        mimeType: file.type,
+        fileSize: file.size,
+        sha256: '',
+        userId
+      };
+    })
+  );
+  const resp = await fetch(`${API_BASE_URL}/generate-presigned-url`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload)
+  });
+  if (!resp.ok) {
+    throw new Error(
+      `Error generating presigned urls: ${resp.status} ${resp.statusText}`
+    );
+  }
+  const text = await resp.text();
+  try {
+    return JSON.parse(text);
+  } catch (e) {
+    return text;
+  }
+}
+
+
+// // Todas las funciones reciben apiFetch ya configurado con el token.
+// export const createLot = (apiFetch) => async (lotInfo) =>
+//   apiFetch("/lots", { method: "POST", body: { lotInfo } });
+
+// export const listLots = (apiFetch) => async (filter) => {
+//   const qs = new URLSearchParams(filter).toString();
+//   return apiFetch(`/lots?${qs}`);
+// };
+// export const reserveLot = (apiFetch) => async (lotId, userId) =>
+//   apiFetch(`/lots/${lotId}/reserve`, {
+//     method: "POST",
+//     body: { userId }
+//   });
+// export const generatePresignedUrls = (apiFetch) => async (files, userId) => {
+//   const payload = await Promise.all(
+//     files.map(async (file) => {
+//       return {
+//         mimeType: file.type,
+//         fileSize: file.size,
+//         sha256: '', // Aquí se podría calcular el hash si fuera necesario
+//         userId
+//       };
+//     })
+//   );
+//   return apiFetch("/presigned-urls", {
+//     method: "POST",
+//     body: payload
+//   });
+// }
+
+
+=== ./utils/apiClient.ts ===
+import { useAuth } from "react-oidc-context";
+
+// Hook que devuelve un fetch pre‑configurado con Authorization:
+export function useApi() {
+  const auth = useAuth();
+  const token = auth.user?.access_token;
+
+  // ⚠️ Mientras se carga auth devolvemos un fetch que lanza error
+  if (auth.isLoading) {
+    return async () => {
+      throw new Error("auth loading");
+    };
+  }
+
+  return async function apiFetch(endpoint, { method = "GET", body } = {}) {
+    const headers = {
+      "Content-Type": "application/json",
+      ...(token && { Authorization: `Bearer ${token}` }),
+    };
+
+    const res = await fetch(import.meta.env.VITE_API_URL + endpoint, {
+      method,
+      headers,
+      body: body ? JSON.stringify(body) : undefined,
+    });
+
+    if (!res.ok) throw new Error(await res.text());
+    if (res.status === 204) return null; // sin cuerpo
+    return res.json();
+  };
+}
