@@ -1,29 +1,17 @@
 import { CreateLotFn, GeneratePresignedUrlFn } from '../controllers/CreateLotFn.js';
+import { getInfoFromToken } from '../utils/auth.js';
 
-export const GeneratePresignedUrlFnHandler = async (event) => {
-    if (!event || !event.body) {
-        return {
-            statusCode: 400,
-            body: "Invalid request format"
-        };
-    }
-    try {
-        const imagesInfoArray = JSON.parse(event.body);
-        const response = await GeneratePresignedUrlFn(imagesInfoArray);
-        return {
-            statusCode: response.statusCode,
-            body: response.body
-        };
-    } catch (error) {
-        console.error("Error generating presigned URLs:", error);
-        return {
-            statusCode: 500,
-            body: "Internal Server Error"
-        };
-    }
-}
 
 export const createLotHandler = async (event) => {
+    console.log(JSON.stringify(event));
+    const token = event.headers?.authorization;
+    if (!token) {
+        return {
+            statusCode: 401,
+            body: "Unauthorized"
+        };
+    }
+    const { sub: producerUserId } = getInfoFromToken(token);
     if (!event || !event.body) {
         return {
             statusCode: 400,
@@ -39,10 +27,13 @@ export const createLotHandler = async (event) => {
                 body: { mensage: "Invalid lot information", lot }
             };
         }
-        const response = await CreateLotFn(lot);
+        const response = await CreateLotFn(lot, producerUserId);
         return {
             statusCode: response.statusCode,
-            body: response.body
+            body: response.body,
+            headers: {
+                'Content-Type': 'application/json'
+            }
         };
     } catch (error) {
         console.error("Error creating lot:", error);

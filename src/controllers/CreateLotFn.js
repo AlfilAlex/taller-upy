@@ -3,9 +3,9 @@ import { Presigner } from '../utils/presigner.js';
 
 const client = new DynamoClient();
 const presigner = new Presigner();
-export const CreateLotFn = async (lot) => {
+export const CreateLotFn = async (lot, userId) => {
     const createdDay = new Date().toISOString().slice(0, 10).replace(/-/g, "");
-    await client.putItem({ ...lot, pk: `lot#${lot.id}`, sk: "meta", createdDay });
+    await client.putItem({ ...lot, pk: `lot#${lot.id}`, sk: "meta", createdDay, ownerId: userId });
     return {
         statusCode: 201,
         body: JSON.stringify(lot)

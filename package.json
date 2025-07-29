@@ -17,6 +17,7 @@
   },
   "dependencies": {
     "@aws-sdk/s3-request-presigner": "^3.850.0",
-    "dynamoose": "^4.0.4"
+    "dynamoose": "^4.0.4",
+    "jose": "^6.0.12"
   }
 }

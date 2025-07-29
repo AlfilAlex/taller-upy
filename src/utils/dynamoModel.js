@@ -1,29 +1,29 @@
-// src/models/lot.model.ts
+
 import dynamoose from "dynamoose";
 
-/* --- Catálogos --- */
+
 const MATERIALS = ["madera", "metal", "vidrio", "textil", "plastico"];
 const SCHEMES = ["donacion", "venta"];
 const STATUSES = ["OPEN", "LOCKED", "PAID", "DELIVERED"];
 const CONDITIONS = ["A", "B", "C"];
 
-/* --- Esquema --- */
+
 const LotSchema = new dynamoose.Schema(
     {
-        /* Claves primarias */
-        pk: { type: String, hashKey: true },                 // "lot#<uuid>"
+
+        pk: { type: String, hashKey: true },
         sk: { type: String, rangeKey: true, default: "meta" },
 
-        /* Datos del lote + GSI #1  (material + status) */
+
         material: {
             type: String,
             enum: MATERIALS,
             required: true,
-            index: {               // 👈 GSI1_MaterialStatus
+            index: {
                 name: "GSI1_MaterialStatus",
                 global: true,
                 rangeKey: "status",
-                project: true        // proyecta todos los atributos
+                project: true
             }
         },
         status: { type: String, enum: STATUSES, default: "OPEN" },
@@ -34,7 +34,7 @@ const LotSchema = new dynamoose.Schema(
         scheme: { type: String, enum: SCHEMES, required: true },
         price: { type: Number, validate: v => v === 0 || v >= 1 },
 
-        /* GSI #2  (ownerId + createdAt) */
+
         ownerId: {
             type: String,
             required: true,
@@ -46,7 +46,7 @@ const LotSchema = new dynamoose.Schema(
             }
         },
 
-        /* GSI #3  (receiverId + status) */
+
         receiverId: {
             type: String,
             index: {
@@ -57,7 +57,7 @@ const LotSchema = new dynamoose.Schema(
             }
         },
 
-        /* Dirección */
+
         address: {
             type: Object,
             schema: {
@@ -72,35 +72,35 @@ const LotSchema = new dynamoose.Schema(
             type: Array,
             schema: [String],
             required: false,
-            // required: true,
-            // validate: arr => Array.isArray(arr) && arr.length >= 2
+
+
         },
 
-        /* Auxiliares */
-        createdDay: {                       // GSI #5  (createdDay + createdAt)
+
+        createdDay: {
             type: String,
             default: () => new Date().toISOString().slice(0, 10).replace(/-/g, ""),
             index: {
                 name: "GSI5_CreatedDay",
                 global: true,
-                rangeKey: "createdAt",
+                rangeKey: "status",
                 project: true
             }
         },
-        // createdAt: { type: Date, default: Date.now }, // GSI #4  (createdAt + ownerId)
-        // updatedAt: { type: Date, default: Date.now }, // GSI #6  (updatedAt + ownerId)
 
-        expiresAt: { type: Number, ttl: true }   // TTL (epoch seconds)
+
+
+        expiresAt: { type: Number, ttl: true }
     },
     {
-        // 🗓 Timestamps automáticos; NO se incluyen en la definición de atributos
+
         timestamps: { createdAt: "createdAt", updatedAt: "updatedAt" },
         saveUnknown: false
     }
 
 );
 
-/* --- Modelo --- */
+
 export const LotModel = dynamoose.model(process.env.DYNAMO_TABLE_NAME, LotSchema, {
     throughput: "ON_DEMAND",
     create: process.env.MUST_CREATE_TABLE || false,

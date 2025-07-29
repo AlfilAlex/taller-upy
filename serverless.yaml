@@ -21,8 +21,8 @@ provider:
 
   environment:  
     DYNAMO_TABLE_NAME: ${self:custom.dynamoTableName}
-    S3_BUCKET_NAME: ${self:custom.s3BucketName}
-    MUST_CREATE_TABLE: true
+    MUST_CREATE_TABLE: false
+    # S3_BUCKET_NAME: ${self:custom.s3BucketName}
     # NODE_PATH: /opt/
 
 
@@ -46,16 +46,16 @@ functions:
       - {Ref: CommonModulesLambdaLayer}
 
   
-  GeneratePresignedUrlFn:
-    handler: index.GeneratePresignedUrlFn
-    memorySize: 128
-    timeout: 5
-    events:
-      - httpApi:
-          method: POST
-          path: /lots/{lotId}/presigned
-    layers:
-      - {Ref: CommonModulesLambdaLayer}
+  # GeneratePresignedUrlFn:
+  #   handler: index.GeneratePresignedUrlFn
+  #   memorySize: 128
+  #   timeout: 5
+  #   events:
+  #     - httpApi:
+  #         method: POST
+  #         path: /lots/{lotId}/presigned
+  #   layers:
+  #     - {Ref: CommonModulesLambdaLayer}
 
   
   listLots:
