@@ -6,7 +6,10 @@ export const ListLotHandler = async (event) => {
         const items = await ListLotsFn(status, day);
         return {
             statusCode: items.statusCode,
-            body: items.body
+            body: items.body,
+            headers: {
+                        "Content-Type": "application/json"
+                }
         };
     } catch (error) {
         console.error("Error in ListLotHandler:", error);
