@@ -1,7 +1,6 @@
 import { LotModel } from "./dynamoModel.js";
 
 
-
 export class DynamoClient {
     constructor() {
         this.lotModel = LotModel;
