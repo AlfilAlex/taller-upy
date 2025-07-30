@@ -1,31 +1,12 @@
-// src/main.jsx
-import React from "react";
-import ReactDOM from "react-dom/client";
-import { BrowserRouter } from "react-router-dom";
-import { AuthProvider } from "react-oidc-context";
-import { WebStorageStateStore } from "oidc-client-ts";          // 👈
-import App from "./App.jsx";
-import { cognitoAuthConfig } from "./auth/cognitoConfig";
+import React from 'react';
+import ReactDOM from 'react-dom/client';
+import App from './App.jsx';
 
-const oidcConfig = {
-  ...cognitoAuthConfig,
-
-  // Guarda los tokens en localStorage para persistir al cerrar pestaña
-  userStore: new WebStorageStateStore({
-    store: window.localStorage          // o sessionStorage si prefieres
-  }),
-
-  // Limpia ?code= y ?state= de la URL después del login
-  onSigninCallback: () =>
-    window.history.replaceState({}, "", window.location.pathname)
-};
-
-ReactDOM.createRoot(document.getElementById("root")).render(
+// Entry point of the React application.  This file mounts the root
+// component into the DOM.  Vite will replace this script tag when
+// bundling for production.
+ReactDOM.createRoot(document.getElementById('root')).render(
   <React.StrictMode>
-    <AuthProvider {...oidcConfig}>
-      <BrowserRouter>
-        <App />
-      </BrowserRouter>
-    </AuthProvider>
+    <App />
   </React.StrictMode>
 );

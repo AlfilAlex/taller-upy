@@ -3,126 +3,24 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Re‑Crea HUB</title>
-    <link rel="stylesheet" href="css/styles.css" />
-    <!-- Cargamos htmx desde nuestro bundle local -->
-    <script src="js/htmx.min.js"></script>
-    <script src="js/common.js"></script>
-    <script src="js/generator.js"></script>
-    <script src="js/marketplace.js"></script>
-    <script src="js/lot.js"></script>
-    <script src="js/confirmation.js"></script>
+    <title>Re‑Crea HUB</title>
+    <!-- A simple reset and font import for a cleaner look -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap"
+      rel="stylesheet"
+    />
+    <style>
+      body {
+        margin: 0;
+        font-family: 'Roboto', sans-serif;
+      }
+    </style>
   </head>
   <body>
-    <header>
-      <h1>Re‑Crea HUB</h1>
-      <!-- Barra de autenticación, se actualiza dinámicamente -->
-      <div id="authBar" class="auth-bar"></div>
-      <!-- Navegación principal -->
-      <nav class="nav">
-        <a href="#" class="nav-link" hx-get="partials/home.html" hx-target="#content" hx-swap="innerHTML">Inicio</a>
-        <a href="#" class="nav-link" hx-get="partials/generator.html" hx-target="#content" hx-swap="innerHTML">Generador</a>
-        <a href="#" class="nav-link" hx-get="partials/marketplace.html" hx-target="#content" hx-swap="innerHTML">Marketplace</a>
-      </nav>
-    </header>
-    <!-- Contenedor dinámico donde htmx inyectará el contenido -->
-    <!-- Contenedor dinámico donde htmx inyectará el contenido.  Incluimos
-         contenido inicial por si la carga dinámica no está disponible
-         (p.ej. apertura vía file://).  Este contenido se reemplazará
-         cuando htmx inserte la vista correspondiente. -->
-    <main id="content" class="content-container">
-      <div style="text-align: center; padding: 2rem;">
-        <h2>Bienvenido a Re‑Crea HUB</h2>
-        <p>Selecciona una opción en la barra de navegación superior para comenzar.</p>
-        <p>¡Gracias por formar parte de nuestra comunidad de reciclaje!</p>
-      </div>
-    </main>
-    <footer>
-      <p>&copy; 2025 Re‑Crea HUB</p>
-    </footer>
-    <script>
-      // Gestión de autenticación: si Cognito devuelve un código como
-      // parámetro 'code' en la URL, lo almacenamos en localStorage y
-      // limpiamos la barra de direcciones.  Después actualizamos la barra
-      // de autenticación para mostrar 'Cerrar sesión' en lugar de 'Iniciar
-      // sesión'.
-      function updateAuthBar() {
-        const authBar = document.getElementById('authBar');
-        authBar.innerHTML = '';
-        const code = localStorage.getItem('authCode');
-        if (code) {
-          const logoutLink = document.createElement('a');
-          logoutLink.href = '#';
-          logoutLink.textContent = 'Cerrar sesión';
-          logoutLink.className = 'button secondary';
-          logoutLink.addEventListener('click', (ev) => {
-            ev.preventDefault();
-            localStorage.removeItem('authCode');
-            updateAuthBar();
-          });
-          authBar.appendChild(logoutLink);
-        } else {
-          // Construimos dinámicamente la URL de redirección para
-          // Cognito utilizando la página actual.  Esto asegura que
-          // tras el login el usuario vuelva a esta SPA.
-          // const redirectUri = encodeURIComponent(window.location.href.split('#')[0]);
-          const loginUrl ='https://us-east-1tur77qjjm.auth.us-east-1.amazoncognito.com/login?client_id=bf3lu8k2nf72luja03i7jig2a&response_type=code&scope=email+openid+phone&redirect_uri=http%3A%2F%2Flocalhost%3A5173';
-          const loginLink = document.createElement('a');
-          loginLink.href = loginUrl;
-          loginLink.textContent = 'Iniciar sesión';
-          loginLink.className = 'button';
-          authBar.appendChild(loginLink);
-        }
-      }
-      function initPage() {
-        // Detecta la presencia de elementos y ejecuta la inicialización
-        if (document.getElementById('publishBtn')) {
-          if (typeof window.setupGenerator === 'function') {
-            window.setupGenerator();
-          }
-        }
-        if (document.getElementById('filter')) {
-          if (typeof window.setupMarketplace === 'function') {
-            window.setupMarketplace();
-          }
-        }
-        if (document.getElementById('lotDetails')) {
-          if (typeof window.setupLot === 'function') {
-            window.setupLot();
-          }
-        }
-        if (document.getElementById('code')) {
-          if (typeof window.setupConfirmation === 'function') {
-            window.setupConfirmation();
-          }
-        }
-      }
-      document.addEventListener('DOMContentLoaded', () => {
-        // Comprueba si la URL contiene 'code' devuelto de Cognito
-        const params = window.parseQuery();
-        if (params.code) {
-          localStorage.setItem('authCode', params.code);
-          // Limpiar la URL de parámetros de autenticación
-          const newUrl = window.location.origin + window.location.pathname;
-          history.replaceState({}, '', newUrl);
-        }
-        updateAuthBar();
-        // Inicializa la vista actual por si ya existe contenido (modo file://)
-        initPage();
-        // Carga la vista inicial (Inicio) mediante la API de htmx.  Al
-        // finalizar la inserción, la función initPage se ejecutará
-        // automáticamente tras el evento 'htmx:afterSwap'.  Si la petición
-        // falla (por ejemplo en modo file://), el contenido inicial
-        // permanecerá visible.
-        if (window.htmx && typeof htmx.ajax === 'function') {
-          htmx.ajax('GET', 'partials/home.html', '#content');
-        }
-      });
-      // Vuelve a inicializar la página tras cada swap de htmx
-      document.body.addEventListener('htmx:afterSwap', () => {
-        updateAuthBar();
-        initPage();
-      });
-    </script>
+    <div id="root"></div>
+    <!-- The main script will be injected here by Vite during dev and build -->
+    <script type="module" src="/src/main.jsx"></script>
   </body>
 </html>
