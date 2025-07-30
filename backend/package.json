@@ -6,8 +6,8 @@
   "type": "module",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "clean-layer": "rm -rf layers/common",
-    "build-layer": "npm run clean-layer && mkdir -p ../layers/common/nodejs && cp package.json layers/common/nodejs/ && npm install --omit=dev --prefix ../layers/common/nodejs",
+    "clean-layer": "rm -rf ../layers/common",
+    "build-layer": "npm run clean-layer && mkdir -p ../layers/common/nodejs && cp package.json ../layers/common/nodejs/ && npm install --omit=dev --prefix ../layers/common/nodejs",
     "deploy": "npm run build-layer && npx osls deploy --stage dev --verbose"
   },
   "author": "",
