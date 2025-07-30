@@ -13,27 +13,19 @@ provider:
   httpApi:  
     cors: true
     authorizers:
-      customAuthorizer:
-        type: request
-        functionName: authorizerFunc
-        payloadVersion: '2.0'
-        enableSimpleResponses: true
+      cognitoJwt:
+        type: jwt
+        identitySource: $request.header.Authorization
+        issuerUrl: https://cognito-idp.${aws:region}.amazonaws.com/${ssm:/recreahub/cognito/userPoolId}
+        audience:
+          - ${ssm:/recreahub/cognito/appClientId}
 
   environment:  
     DYNAMO_TABLE_NAME: ${self:custom.dynamoTableName}
     MUST_CREATE_TABLE: false
-    # S3_BUCKET_NAME: ${self:custom.s3BucketName}
-    # NODE_PATH: /opt/
 
 
 functions:
-  
-  authorizerFunc:
-    handler: index.authorizer
-    memorySize: 128
-    timeout: 5
-
-  
   createLot:
     handler: index.createLot
     memorySize: 256
@@ -42,22 +34,11 @@ functions:
       - httpApi:
           method: POST
           path: /lots
+          authorizer:
+            name: cognitoJwt
     layers:
       - {Ref: CommonModulesLambdaLayer}
 
-  
-  # GeneratePresignedUrlFn:
-  #   handler: index.GeneratePresignedUrlFn
-  #   memorySize: 128
-  #   timeout: 5
-  #   events:
-  #     - httpApi:
-  #         method: POST
-  #         path: /lots/{lotId}/presigned
-  #   layers:
-  #     - {Ref: CommonModulesLambdaLayer}
-
-  
   listLots:
     handler: index.listLots
     memorySize: 128
@@ -86,7 +67,7 @@ layers:
     path: ../layers/common
     compatibleRuntimes:
       - nodejs20.x
-    description: Common layer for shared dependencies
+    description: Aqui van los node modules
 
 custom:
   dynamoTableName: ${self:service}-lots-${opt:stage, 'dev'}
