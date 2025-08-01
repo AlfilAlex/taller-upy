@@ -115,18 +115,19 @@ return { statusCode: 500, body: 'Internal Server Error' };
 ### 4\. Registrar la función en Serverless
 
 Ahora debemos exponer esta lógica mediante API Gateway. En serverless.yaml declaramos la nueva función, su handler y la ruta HTTP:
-
+```yml
 functions:  
-listLots:  
-handler: index.listLots  
-memorySize: 128  
-timeout: 5  
-events:  
-\- httpApi:  
-method: GET  
-path: /lots  
-layers:  
-\- { Ref: CommonModulesLambdaLayer }
+    listLots:  
+        handler: index.listLots  
+        memorySize: 128  
+        timeout: 5  
+        events:  
+            - httpApi:  
+            method: GET  
+            path: /lots  
+        layers:  
+        - { Ref: CommonModulesLambdaLayer }
+```
 
 Asegúrate de exportar la función desde index.js:
 ```javascript
