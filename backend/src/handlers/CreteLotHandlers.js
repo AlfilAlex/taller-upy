@@ -47,8 +47,6 @@ export const createLotHandler = async (event) => {
 
 
 const validateAllLotInfo = (lot) => {
-    // Aquí puedes implementar la lógica de validación para todos los campos del lote
-    // Por ejemplo, verificar que los campos requeridos estén presentes y tengan el formato correcto
     if (!lot.material) {
         console.error("Invalid material:", lot.material);
         return false;
@@ -65,6 +63,5 @@ const validateAllLotInfo = (lot) => {
         console.error("Invalid price:", lot.price);
         return false;
     }
-    // Agrega más validaciones según sea necesario
     return true;
 }

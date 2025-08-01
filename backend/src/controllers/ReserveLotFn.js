@@ -3,7 +3,6 @@ import { reserverIsNotTheSender } from "../utils/validators.js";
 
 export const ReserveLotFn = async (lotId, receiverId) => {
     try {
-        // Aquí se implementaría la lógica para reservar el lote
         console.log(`Reserving lot with ID: ${lotId} for receiver ID: ${receiverId}`);
         const condition = reserverIsNotTheSender(receiverId);
         const result = await LotModel.update({ pk: `lot#${lotId}`, sk: `meta` },
