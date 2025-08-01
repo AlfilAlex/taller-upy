@@ -1,0 +1,74 @@
+service: recreahub
+frameworkVersion: '3'
+
+provider:
+  name: aws
+  runtime: nodejs20.x   
+  region: us-east-1
+  stage: ${opt:stage, 'dev'}
+  cfnRole: arn:aws:iam::676373376027:role/cfnRole-role
+  iam:
+    role: arn:aws:iam::676373376027:role/recreahub-lambda-rol
+
+  httpApi:  
+    cors: true
+    authorizers:
+      cognitoJwt:
+        type: jwt
+        identitySource: $request.header.Authorization
+        issuerUrl: https://cognito-idp.${aws:region}.amazonaws.com/${ssm:/recreahub/cognito/userPoolId}
+        audience:
+          - ${ssm:/recreahub/cognito/appClientId}
+
+  environment:  
+    DYNAMO_TABLE_NAME: ${self:custom.dynamoTableName}
+    MUST_CREATE_TABLE: false
+
+
+functions:
+  createLot:
+    handler: index.createLot
+    memorySize: 256
+    timeout: 10
+    events:
+      - httpApi:
+          method: POST
+          path: /lots
+          authorizer:
+            name: cognitoJwt
+    layers:
+      - {Ref: CommonModulesLambdaLayer}
+
+  listLots:
+    handler: index.listLots
+    memorySize: 128
+    timeout: 5
+    events:
+      - httpApi:
+          method: GET
+          path: /lots
+    layers:
+      - {Ref: CommonModulesLambdaLayer}
+
+  
+  reserveLot:
+    handler: index.reserveLots
+    memorySize: 128
+    timeout: 5
+    events:
+      - httpApi:
+          method: PUT   
+          path: /lots/{lotId}/reserve
+    layers:
+      - {Ref: CommonModulesLambdaLayer}
+
+layers:
+  CommonModules:
+    path: ../layers/common
+    compatibleRuntimes:
+      - nodejs20.x
+    description: Aqui van los node modules
+
+custom:
+  dynamoTableName: ${self:service}-lots-${opt:stage, 'dev'}
+  s3BucketName:   ${self:service}-lots-${opt:stage, 'dev'}
