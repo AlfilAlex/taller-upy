@@ -38,19 +38,19 @@ Imagina que el backend inicial carece de la funcionalidad para listar lotes. A c
 Queremos consultar los lotes que están abiertos (status = 'OPEN') en el día actual. En DynamoDB utilizaremos un índice global secundario sobre el atributo createdDay para consultar por fecha y filtrar por estatus. En dynamoModel.js añadimos el índice GSI5_CreatedDay:
 ```javascript
 const LotSchema = new dynamoose.Schema({  
-pk: { type: String, hashKey: true },  
-sk: { type: String, rangeKey: true, default: 'meta' },  
-// … otros atributos …  
-createdDay: {  
-type: String,  
-default: () => new Date().toISOString().slice(0, 10).replace(/-/g, ''),  
-index: {  
-name: 'GSI5_CreatedDay',  
-global: true,  
-rangeKey: 'status',  
-project: true  
-}  
-}  
+    pk: { type: String, hashKey: true },  
+    sk: { type: String, rangeKey: true, default: 'meta' },  
+    // … otros atributos …  
+    createdDay: {  
+        type: String,  
+        default: () => new Date().toISOString().slice(0, 10).replace(/-/g, ''),  
+        index: {  
+            name: 'GSI5_CreatedDay',  
+            global: true,  
+            rangeKey: 'status',  
+            project: true  
+        }  
+    }  
 });  
 ```
 export const LotModel = dynamoose.model(process.env.DYNAMO_TABLE_NAME, LotSchema, {  
@@ -64,24 +64,24 @@ En src/controllers definimos una función pura que reciba los parámetros de bú
 ```javascript
 // src/controllers/ListLotsFn.js  
 import { DynamoClient } from '../utils/dynamoClient.js';  
-<br/>export const ListLotsFn = async (status, createdDay) => {  
+export const ListLotsFn = async (status, createdDay) => {  
 const client = new DynamoClient();  
 try {  
-// Si no se pasa fecha, consulta por estatus usando un escaneo  
-if (!createdDay) {  
-const result = await client.lotModel.scan('status').eq(status).exec();  
-return { statusCode: 200, body: JSON.stringify(result) };  
-}  
-// Consulta por fecha y estatus usando el índice GSI5_CreatedDay  
-let query = client.lotModel.query('createdDay').eq(createdDay).using('GSI5_CreatedDay');  
-if (status) {  
-query = query.where('status').eq(status);  
-}  
-const items = await query.exec();  
-return { statusCode: 200, body: JSON.stringify(items) };  
+    // Si no se pasa fecha, consulta por estatus usando un escaneo  
+    if (!createdDay) {  
+        const result = await client.lotModel.scan('status').eq(status).exec();  
+        return { statusCode: 200, body: JSON.stringify(result) };  
+    }  
+    // Consulta por fecha y estatus usando el índice GSI5_CreatedDay  
+    let query = client.lotModel.query('createdDay').eq(createdDay).using('GSI5_CreatedDay');  
+    if (status) {  
+        query = query.where('status').eq(status);  
+    }  
+    const items = await query.exec();  
+    return { statusCode: 200, body: JSON.stringify(items) };  
 } catch (error) {  
-console.error('Error listing lots:', error);  
-return { statusCode: 500, body: JSON.stringify({ message: 'Internal Server Error' }) };  
+    console.error('Error listing lots:', error);  
+    return { statusCode: 500, body: JSON.stringify({ message: 'Internal Server Error' }) };  
 }  
 };
 ```
@@ -100,15 +100,15 @@ export const ListLotHandler = async (event) => {
 // Extraemos parámetros de la query; podrían venir como undefined  
 const { status, createdDay } = event.queryStringParameters || {};  
 try {  
-const result = await ListLotsFn(status, createdDay);  
-return {  
-statusCode: result.statusCode,  
-body: result.body,  
-headers: { 'Content-Type': 'application/json' }  
-};  
+    const result = await ListLotsFn(status, createdDay);  
+    return {  
+    statusCode: result.statusCode,  
+    body: result.body,  
+    headers: { 'Content-Type': 'application/json' }  
+    };  
 } catch (error) {  
-console.error('Error in ListLotHandler:', error);  
-return { statusCode: 500, body: 'Internal Server Error' };  
+    console.error('Error in ListLotHandler:', error);  
+    return { statusCode: 500, body: 'Internal Server Error' };  
 }  
 };
 ```
@@ -142,9 +142,9 @@ Desplega con npm run deploy. API Gateway asignará el path /lots al método GET 
 En el cliente, construye la URL con la fecha actual y el estatus deseado. Un ejemplo simple en JavaScript:
 ```javascript
 const today = new Date().toISOString().slice(0, 10).replace(/-/g, '');  
-const query = \`?status=OPEN&createdDay=${today}\`;  
-const res = await fetch(\`${API_BASE_URL}/lots${query}\`, {  
-headers: { Authorization: token }  
+const query = \`?status=OPEN&createdDay=${today}`;  
+const res = await fetch(`${API_BASE_URL}/lots${query}`, {  
+    headers: { Authorization: token }  
 });  
 const items = await res.json();  
 // items es un arreglo de lotes o un objeto indexado por PK
