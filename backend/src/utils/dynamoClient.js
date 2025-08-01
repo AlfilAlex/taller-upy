@@ -17,7 +17,7 @@ export class DynamoClient {
         }
     }
 
-    async getItemById(status, createdDay) {
+    async getItemByStatusAndDate(status, createdDay) {
         try {
             const openLotsToday = await LotModel
                 .query("createdDay").eq(createdDay)
@@ -25,7 +25,7 @@ export class DynamoClient {
                 .using("GSI5_CreatedDay")
                 .exec();
             if (!openLotsToday) {
-                throw new Error(`Item with ID ${itemId} not found`);
+                throw new Error(`Item with status ${status} and createdDay ${createdDay} not found`);
             }
             return openLotsToday;
         } catch (error) {
