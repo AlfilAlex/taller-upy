@@ -36,7 +36,7 @@ Imagina que el backend inicial carece de la funcionalidad para listar lotes. A c
 ### 1\. Definir el modelo de datos
 
 Queremos consultar los lotes que están abiertos (status = 'OPEN') en el día actual. En DynamoDB utilizaremos un índice global secundario sobre el atributo createdDay para consultar por fecha y filtrar por estatus. En dynamoModel.js añadimos el índice GSI5_CreatedDay:
-
+```javascript
 const LotSchema = new dynamoose.Schema({  
 pk: { type: String, hashKey: true },  
 sk: { type: String, rangeKey: true, default: 'meta' },  
@@ -52,7 +52,8 @@ project: true
 }  
 }  
 });  
-<br/>export const LotModel = dynamoose.model(process.env.DYNAMO_TABLE_NAME, LotSchema, {  
+```
+export const LotModel = dynamoose.model(process.env.DYNAMO_TABLE_NAME, LotSchema, {  
 throughput: 'ON_DEMAND',  
 create: process.env.MUST_CREATE_TABLE || false  
 });
@@ -60,7 +61,7 @@ create: process.env.MUST_CREATE_TABLE || false
 ### 2\. Crear la función de negocio
 
 En src/controllers definimos una función pura que reciba los parámetros de búsqueda (status y createdDay) y devuelva la lista de lotes utilizando dynamoose:
-
+```javascript
 // src/controllers/ListLotsFn.js  
 import { DynamoClient } from '../utils/dynamoClient.js';  
 <br/>export const ListLotsFn = async (status, createdDay) => {  
@@ -83,7 +84,7 @@ console.error('Error listing lots:', error);
 return { statusCode: 500, body: JSON.stringify({ message: 'Internal Server Error' }) };  
 }  
 };
-
+```
 Observaciones:
 
 - Se aísla la consulta en un solo lugar. Si mañana se requieren filtros por ciudad o material, se pueden agregar parámetros a esta función sin tocar el handler.
@@ -92,10 +93,10 @@ Observaciones:
 ### 3\. Crear el handler HTTP
 
 En src/handlers, creamos el adaptador que invoca la función de negocio. Extrae status y createdDay desde la query string, invoca ListLotsFn y arma la respuesta HTTP:
-
+```javascript
 // src/handlers/ListLotsHandler.js  
 import { ListLotsFn } from '../controllers/ListLotsFn.js';  
-<br/>export const ListLotHandler = async (event) => {  
+export const ListLotHandler = async (event) => {  
 // Extraemos parámetros de la query; podrían venir como undefined  
 const { status, createdDay } = event.queryStringParameters || {};  
 try {  
@@ -110,7 +111,7 @@ console.error('Error in ListLotHandler:', error);
 return { statusCode: 500, body: 'Internal Server Error' };  
 }  
 };
-
+```
 ### 4\. Registrar la función en Serverless
 
 Ahora debemos exponer esta lógica mediante API Gateway. En serverless.yaml declaramos la nueva función, su handler y la ruta HTTP:
@@ -128,17 +129,17 @@ layers:
 \- { Ref: CommonModulesLambdaLayer }
 
 Asegúrate de exportar la función desde index.js:
-
+```javascript
 // index.js  
 import { ListLotHandler } from './src/handlers/ListLotsHandler.js';  
-<br/>export const listLots = ListLotHandler;
-
+export const listLots = ListLotHandler;
+```
 Desplega con npm run deploy. API Gateway asignará el path /lots al método GET que invocará a tu handler.
 
 ### 5\. Consumir la API desde el frontend
 
 En el cliente, construye la URL con la fecha actual y el estatus deseado. Un ejemplo simple en JavaScript:
-
+```javascript
 const today = new Date().toISOString().slice(0, 10).replace(/-/g, '');  
 const query = \`?status=OPEN&createdDay=${today}\`;  
 const res = await fetch(\`${API_BASE_URL}/lots${query}\`, {  
@@ -146,7 +147,7 @@ headers: { Authorization: token }
 });  
 const items = await res.json();  
 // items es un arreglo de lotes o un objeto indexado por PK
-
+```
 El rol receptor en el frontend (Receptor.jsx) utiliza exactamente este patrón. Filtra el arreglo por material en el cliente y ofrece un botón **Reservar** por cada lote.
 
 ### 6\. Validar y mejorar
