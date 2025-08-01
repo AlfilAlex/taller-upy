@@ -39,18 +39,6 @@ functions:
     layers:
       - {Ref: CommonModulesLambdaLayer}
 
-  listLots:
-    handler: index.listLots
-    memorySize: 128
-    timeout: 5
-    events:
-      - httpApi:
-          method: GET
-          path: /lots
-    layers:
-      - {Ref: CommonModulesLambdaLayer}
-
-  
   reserveLot:
     handler: index.reserveLots
     memorySize: 128
